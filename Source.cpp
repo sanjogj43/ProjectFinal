@@ -197,7 +197,7 @@ void BWT::fillUpComponentIds(int bucketId)
 unsigned int BWT::getKmerMask()
 {
 	unsigned int x = 0xffffffff;
-	x <<= kmerLength;
+	x <<= (kmerLength*2);
 	x = ~x;
 	return x;
 }
