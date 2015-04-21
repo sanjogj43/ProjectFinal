@@ -11,6 +11,7 @@
 
 using namespace std;
 
+int inside = 0;
 
 class BWT
 {
@@ -18,7 +19,7 @@ public:
 	vector<char> BWTString;
 	vector<int> LCPVal;
 	vector<unsigned int> componentIds;
-
+	vector<int> bucketSizes;
 	int numOfBuckets;
 	int compSize;
 	int kmerLength;
@@ -29,6 +30,10 @@ public:
 	vector<string> LCPArray;
 	void QuickSort(int start, int n);
 	int Partition(int start, int n);
+	BWT()
+	{
+		//bucketSizes = NULL;
+	}
 	void swap(unsigned int &s1, unsigned int &s2);
 	void findSuperMaximalRepeats(string outputFName);
 	void findBWT();
@@ -77,11 +82,13 @@ void BWT::QuickSort(int start, int n)
 		int n2 = n - n1 - 1;
 		QuickSort(start, n1);
 		QuickSort(pivotIndex + 1, n2);
+		inside--;
 	}
 }
 
 int BWT::Partition(int start, int n)
 {
+	inside++;
 	string pivot = origString.substr(componentIds[start], compSize);
 	int i = start + 1;
 	int j = start + n - 1;
@@ -172,12 +179,11 @@ void BWT::fillUpComponentIds(int bucketId)
 		{
 			kmer <<= 2;
 			kmer &= mask;
-			unsigned int convChar = convertCharacter(origString[i + j]);
+			unsigned int convChar = convertCharacter(origString[i+j]);
 			if (convChar == 0xffffffff)
 			{
 				cout << "i=" << i << endl;
-				cout << "j=" << j << endl;
-				cout << "origString[" << i + j << "]=" << origString[i + j] << endl;
+				cout << "origString[" << i+j << "]=" << origString[i+j] << endl;
 				throw "Invalid character encountered!!";
 			}
 			kmer |= convChar;
@@ -186,10 +192,14 @@ void BWT::fillUpComponentIds(int bucketId)
 				maxKmer = kmer;
 			}
 		}
-		if (kmer >= minIndex && kmer<maxIndex)
+		if (bucketId == 0)
 		{
-			componentIds.push_back(i);
+			int buckSizeIndex = kmer / numEltsInEachBucket;
+			bucketSizes[buckSizeIndex]++;
 		}
+		if(kmer >= minIndex && kmer<maxIndex)
+			componentIds.push_back(i);
+		
 
 	}
 }
@@ -205,7 +215,7 @@ unsigned int BWT::getKmerMask()
 void BWT::findSuperMaximalRepeats(string outputFName)
 {
 	ofstream fout;
-	fout.open(outputFName.c_str(), ios::app);
+	fout.open(outputFName, ios::app);
 	bool currentUp = false, currDown = false;
 	int startInt = -1, endInt = -1;
 
@@ -323,6 +333,11 @@ int main(int argc, char *argv[])
 	bwt.numOfBuckets = pow(4,bwt.kmerLength);
 	bwt.numEltsInEachBucket = 1024;
 
+	//Start: Initialize bucketSizes Array
+	vector<int> tempBuckSizes(bwt.numOfBuckets, 0);
+	bwt.bucketSizes = tempBuckSizes;
+	//end: Inistialize bucketsizes array
+	int cnt1 = 0;
 	try
 	{
 		fstream fout2;
@@ -330,25 +345,30 @@ int main(int argc, char *argv[])
 		fstream fout;
 		fout.open(outputFName.c_str(), ios::out);
 		fout.close();
+		
 		for (int i = 0; i < bwt.numOfBuckets; i++)
 		{
 			// fill up the components
-			bwt.fillUpComponentIds(i);
-
-			// Sort the components
-			bwt.QuickSort(0, bwt.componentIds.size());
-			// find BWT from sorted component ids
-			bwt.findBWT();
-			// find LCPs from sorted component ids
-			bwt.findLCPArray();
-			fout2 << "--------LCPVAL ARRAY   BUCKET   "  << i<<"   -------" << endl;
-			for (int j = 0; j < bwt.LCPVal.size() && j < bwt.componentIds.size() && j<bwt.BWTString.size(); j++)
+			if (i==0 || bwt.bucketSizes[i] != 0)
 			{
-				fout2 << "pos : " << j << "\tIndex : " << bwt.componentIds[j] << "\t LCP val :" << bwt.LCPVal[j] << "\t BWT : " << bwt.BWTString[j] << endl;
+				bwt.fillUpComponentIds(i);
+
+				// Sort the components
+				bwt.QuickSort(0, bwt.componentIds.size());
+				// find BWT from sorted component ids
+				bwt.findBWT();
+				// find LCPs from sorted component ids
+				bwt.findLCPArray();
+				fout2 << "--------LCPVAL ARRAY   BUCKET   " << i << "   -------" << endl;
+				for (int j = 0; j < bwt.LCPVal.size() && j < bwt.componentIds.size() && j < bwt.BWTString.size(); j++)
+				{
+					fout2 << "pos : " << j << "\tIndex : " << bwt.componentIds[j] << "\t LCP val :" << bwt.LCPVal[j] << "\t BWT : " << bwt.BWTString[j] << endl;
+				}
+				// Start : compute Super maximal repeats 
+				bwt.findSuperMaximalRepeats(outputFName);
+				// End : compute Super maximal repeats
+				cnt1++;
 			}
-			// Start : compute Super maximal repeats 
-			bwt.findSuperMaximalRepeats(outputFName);
-			// End : compute Super maximal repeats 
 		}
 	}
 	catch (const char* msg)
