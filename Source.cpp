@@ -179,11 +179,11 @@ void BWT::fillUpComponentIds(int bucketId)
 		{
 			kmer <<= 2;
 			kmer &= mask;
-			unsigned int convChar = convertCharacter(origString[i+j]);
+			unsigned int convChar = convertCharacter(origString[i]);
 			if (convChar == 0xffffffff)
 			{
-				cout << "i=" << i << endl;
-				cout << "origString[" << i+j << "]=" << origString[i+j] << endl;
+				//cout << "i=" << i << endl;
+				//cout << "origString[" << i << "]=" << origString[i] << endl;
 				throw "Invalid character encountered!!";
 			}
 			kmer |= convChar;
@@ -192,14 +192,26 @@ void BWT::fillUpComponentIds(int bucketId)
 				maxKmer = kmer;
 			}
 		}
-		if (bucketId == 0)
-		{
-			int buckSizeIndex = kmer / numEltsInEachBucket;
-			bucketSizes[buckSizeIndex]++;
-		}
-		if(kmer >= minIndex && kmer<maxIndex)
-			componentIds.push_back(i);
-		
+			/*if (i != 0 && (i+1) >= 12)
+			{*/
+				if (bucketId == 0)
+				{
+					int buckSizeIndex = kmer / numEltsInEachBucket;
+					bucketSizes[buckSizeIndex]++;
+					/*ofstream f1;
+					f1.open("buckSizes2.txt", ios::app);
+					f1 << "index : " << buckSizeIndex << "\tSize : " << bucketSizes[buckSizeIndex] << endl;
+					f1.close();*/
+				}
+				if (kmer >= minIndex && kmer < maxIndex)
+				{
+					componentIds.push_back(i);
+					ofstream f1;
+					/*f1.open("comps2.txt", ios::app);
+					f1 <<"Kmer : "<<kmer<< "\tBucket Id : " << bucketId<<"\tComponent id : "<< i<<endl;
+					f1.close();*/
+				}
+			//}
 
 	}
 }
@@ -215,7 +227,7 @@ unsigned int BWT::getKmerMask()
 void BWT::findSuperMaximalRepeats(string outputFName)
 {
 	ofstream fout;
-	fout.open(outputFName, ios::app);
+	fout.open(outputFName.c_str(), ios::app);
 	bool currentUp = false, currDown = false;
 	int startInt = -1, endInt = -1;
 
@@ -264,7 +276,7 @@ void BWT::findSuperMaximalRepeats(string outputFName)
 				{
 					string superMaxRep = origString.substr(componentIds[startInt], LCPVal[endInt]);
 					fout << componentIds[startInt] << "\t" << LCPVal[endInt] <<"\t"<<endInt-startInt + 1<< endl;
-					cout << componentIds[startInt] << "\t" << LCPVal[endInt] << "\t" << endInt - startInt + 1<<"\t"<<superMaxRep<< endl;
+					//cout << componentIds[startInt] << "\t" << LCPVal[endInt] << "\t" << endInt - startInt + 1<<"\t"<<superMaxRep<< endl;
 					pairWiseDistinct = false;
 					currentUp = false;
 					currDown = false;
@@ -281,7 +293,8 @@ int main(int argc, char *argv[])
 	BWT bwt;
 	if (argc != 6)
 	{
-		cout << "Invalid number of arguments!";
+		//cout << "Invalid number of arguments!";
+		cerr << "Invalid number of arguments!";
 			return 1;
 	}
 	bwt.kmerLength = atoi(argv[1]);
@@ -292,7 +305,8 @@ int main(int argc, char *argv[])
 	// end: Assign all the command line arguments
 	if (bwt.kmerLength == 0 || bwt.minLCPLength == 0 || bwt.compSize == 0)
 	{
-		cout << "Error : Invalid kmer length or component size of minimum LCP length!" << endl;
+		//cout << "Error : Invalid kmer length or component size of minimum LCP length!" << endl;
+		cerr << "Error : Invalid kmer length or component size of minimum LCP length!" << endl;
 		return 1;
 	}
 	ifstream myFile(inputFName.c_str());
@@ -320,15 +334,11 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		cout << "Error : Input file does not exist";
+		//cout << "Error : Input file does not exist";
+		cerr << "Error : Input file does not exist";
 		return 1;
 	}
 	s = ss.str() + "$";
-	//cout<<s;
-	/*fstream fout3;
-	fout3.open("lcpval.txt", ios::out);
-	fout3 << s;
-	fout3.close();*/
 	bwt.origString = s;
 	bwt.numOfBuckets = pow(4,bwt.kmerLength);
 	bwt.numEltsInEachBucket = 1024;
@@ -340,8 +350,8 @@ int main(int argc, char *argv[])
 	int cnt1 = 0;
 	try
 	{
-		fstream fout2;
-		fout2.open("lcpval.txt", ios::out);
+		/*fstream fout2;
+		fout2.open("lcpval.txt", ios::out);*/
 		fstream fout;
 		fout.open(outputFName.c_str(), ios::out);
 		fout.close();
@@ -359,11 +369,11 @@ int main(int argc, char *argv[])
 				bwt.findBWT();
 				// find LCPs from sorted component ids
 				bwt.findLCPArray();
-				fout2 << "--------LCPVAL ARRAY   BUCKET   " << i << "   -------" << endl;
+				/*fout2 << "--------LCPVAL ARRAY   BUCKET   " << i << "   -------" << endl;
 				for (int j = 0; j < bwt.LCPVal.size() && j < bwt.componentIds.size() && j < bwt.BWTString.size(); j++)
 				{
 					fout2 << "pos : " << j << "\tIndex : " << bwt.componentIds[j] << "\t LCP val :" << bwt.LCPVal[j] << "\t BWT : " << bwt.BWTString[j] << endl;
-				}
+				}*/
 				// Start : compute Super maximal repeats 
 				bwt.findSuperMaximalRepeats(outputFName);
 				// End : compute Super maximal repeats
@@ -374,6 +384,7 @@ int main(int argc, char *argv[])
 	catch (const char* msg)
 	{
 		cout << "Exception : " << msg << endl;
+		cerr << "Exception : " << msg << endl;
 	}
 	cout << "over";
 	return 0;
